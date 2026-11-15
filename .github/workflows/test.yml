@@ -1,0 +1,68 @@
+name: test
+on: [push, pull_request]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmysqlclient-dev cpanminus cmake libssl-dev pkg-config
+
+      - name: Install Perl dependencies
+        run: sudo cpanm -nq Alien::Build Test::Alien Net::SSLeay IO::Socket::SSL Mozilla::CA Alien::cmake3 HTML::LinkExtor
+
+      - name: Test system install type
+        run: perl Makefile.PL && make && make test
+
+      - name: Test share install type
+        env:
+          ALIEN_INSTALL_TYPE: share
+        run: make realclean && perl Makefile.PL && make && make test
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.40'
+
+      - name: Install MySQL
+        run: brew install mysql-client pkgconf cmake openssl@3
+
+      - name: Install Perl dependencies
+        run: cpanm -nq Alien::Build Test::Alien Alien::cmake3 HTML::LinkExtor
+
+      - name: Test system install type
+        run: |
+          export PKG_CONFIG_PATH="$(brew --prefix mysql-client)/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          perl Makefile.PL && make && make test
+
+      - name: Test share install type
+        env:
+          ALIEN_INSTALL_TYPE: share
+        run: |
+          export LIBRARY_PATH="$(brew --prefix openssl@3)/lib"
+          make realclean && perl Makefile.PL && make && make test
+
+  freebsd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y perl5 gmake pkgconf cmake mysql84-client
+            pkg install -y p5-App-cpanminus p5-Net-SSLeay p5-IO-Socket-SSL p5-Mozilla-CA
+            cpanm -nq Alien::Build Test::Alien Alien::cmake3 HTML::LinkExtor
+          run: |
+            perl Makefile.PL && gmake && gmake test
+            gmake realclean
+            ALIEN_INSTALL_TYPE=share perl Makefile.PL && gmake && gmake test

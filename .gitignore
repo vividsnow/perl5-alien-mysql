@@ -1,0 +1,10 @@
+/_alien/
+/.pcg/
+/blib/
+/Makefile
+/Makefile.old
+/MYMETA.*
+/pm_to_blib
+*.o
+*.bs
+Alien-MySQL-*
